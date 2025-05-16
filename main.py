@@ -1,40 +1,39 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
-import cv2
+#import cv2
 from sklearn.cluster import AgglomerativeClustering
-from sklearn.cluster import KMeans
+#from sklearn.cluster import KMeans
 from sklearn.cluster import MeanShift, estimate_bandwidth
 from scipy.spatial import distance
 import os
 import pandas as pd 
 import math
-from sklearn.metrics import silhouette_score
-from sklearn.metrics import calinski_harabasz_score
-from sklearn import preprocessing
-import time
-import random
+#from sklearn.metrics import silhouette_score
+#from sklearn.metrics import calinski_harabasz_score
+#from sklearn import preprocessing
+#import time
+#import random
 import matplotlib.animation as animation
 import matplotlib.colors as mcolors
-from sklearn.metrics import silhouette_score, davies_bouldin_score, calinski_harabasz_score
-from sklearn.metrics import mutual_info_score, adjusted_rand_score
+#from sklearn.metrics import silhouette_score, davies_bouldin_score, calinski_harabasz_score
+#from sklearn.metrics import mutual_info_score, adjusted_rand_score
 from collections import defaultdict
-from scipy.spatial.distance import euclidean
-from fastdtw import fastdtw
+#from scipy.spatial.distance import euclidean
 
 
 #preprocessing
 #buat evaluasi menggunakan matrix clustering!!!!!!!!!!!!
 #directoryGT='Pedestrian Cluster/crossing_90c03.txt'
-directoryGT='Pedestrian Cluster/dataset continual/MOT21GT02.txt'
-#directoryGT='Pedestrian Cluster/gt03.txt'
+#directoryGT='Pedestrian Cluster/dataset continual/MOT21GT02.txt'
+directoryGT='gt03.txt'
 #directory='Pedestrian Cluster/pred.txt'
-#directory='Pedestrian Cluster/gt03.txt'
+directory='gt03.txt'
 #directory='Pedestrian Cluster/crossing_90c03.txt'
-directory='Pedestrian Cluster/dataset continual/MOT21GT02.txt'
-start=75
-finish=2325#16fps 90 seconds
-tdist=120
+#directory='Pedestrian Cluster/dataset continual/MOT21GT02.txt'
+start=75#75
+finish=950#2325#16fps 90 seconds
+tdist=110
 tdirect=50
 filename = "MOT21GT02_outputfull.csv"
 # tdist=50
@@ -181,8 +180,7 @@ def preparethedata(directory):
     databefore = -1
     prevVx = 0
     prevVy = 0
-    #ini harus dicari sih datanya dari pada mengandalkan susunan data awal
-    #data disusun berdasarkan id pedestrian, jika Id pedestriannya berubah dari sebelumnya maka di set 0 nilainya
+    #The data is arranged based on the pedestrian ID. If the pedestrian ID changes from the previous one, then its value is set to 0.
     for data in df:
         if (i > 0):
             if(df[before][1] != data[1]):
@@ -211,7 +209,7 @@ def preparethedata(directory):
         i += 1
         before += 1
     return df
-#data berisi: frame,idpeds,x,y,degree,dvx,dvy,clusterid
+#data contains: frame,idpeds,x,y,degree,dvx,dvy,clusterid
 
 df=preparethedata(directory)
 dfGT=preparethedata(directoryGT)
@@ -231,47 +229,7 @@ def direction_vectors(trajectory):
             vectors.append(vector / np.linalg.norm(vector))
     return vectors
 #arrange=arrangeperperson(dataGT)
-def dtw_normalized_vectors(trajectory1, trajectory2):
-    vectors1 = direction_vectors(trajectory1)
-    vectors2 = direction_vectors(trajectory2)
-    if(len(vectors1)==0 or len(vectors2)==0):
-        distance=999
-    #    print('vector kosong')
-    else:
-        distance, _ = fastdtw(vectors1, vectors2, dist=euclidean)
-    return distance
-def compareTrajectorysimilaritywithGT(arrange,evsmooth):
-    #convertdataGT perperson
-    centroidsimvals=[]
-    countpeds=0
-    for idarr,gt in enumerate(arrange):
-        simval=[]
-        countcluster=0
-       # if(len(np.array(gt[1])[:,(1,2)])==1):
-       #     print('peds',gt[0])
-        for idev,Evs in enumerate(evsmooth):
-         #   if(len(np.array(Evs[1])[:,(4,5)])==1):
-         #       print('clust',Evs[0])
-            #data1=np.array(Evs[1])[:,(1,2)]
-            #data2=np.array(gt[1])[:,(1,2)]
-            
-            similarityval=dtw_normalized_vectors(np.array(Evs[1])[:,(4,5)],np.array(gt[1])[:,(1,2)])
-                
-        
-            if(similarityval<4):
-                simval.append([Evs[0],similarityval])
-                print('similval:',similarityval)
-                
-                countcluster+=1
-                #break
-        centroidsimvals.append([gt[0],simval])
-        if(countcluster>=1):
-            countpeds+=1
-            print('countpeds:',countpeds)
-    percentage=countpeds/len(arrange)
-    print('peds=',countpeds)
 
-    return centroidsimvals,percentage
 datas = getdatabyframe(df, start)
 datanframe = getdatabynframe(df, start, finish)
 arrange=arrangeperperson(dataGT)
@@ -315,7 +273,7 @@ ypoints = [sublist[3] for sublist in datas]
 pedid=[sublist[1] for sublist in datas]
 
 def arrangedatapercluster(idclusters, lbls, datafit,dataupdate):
-    #mengurutkan data percluster, jika idcluster ditemukan pada lbls maka dimasukan ke arranged
+    #Sort the data by cluster; if an idcluster is found in lbls, then it is added to arranged.
     arranged = []
     i=0
     for l in range(0, len(lbls)):
@@ -325,12 +283,12 @@ def arrangedatapercluster(idclusters, lbls, datafit,dataupdate):
             dataupdate[l][-1] = idclusters
             datafit[l][-1]=idclusters
             val2=np.append(val,i)
-            arranged.append(val2)#-1 adalah tambahkan informasi index induknya,-2 baru mendapatkan idcluster
+            arranged.append(val2)#-1 is the cluster index
         i+=1
     return arranged
 
 def arrangeddatas(maxclusters, lbls, datafit, dataupdate):
-    #maximum cluster, labels, data yang akan diarrange, data induk yang nilai label clusternya akan diupdate
+    #maximum cluster, labels, arranged data, main data that the cluster label will be updated
     result=[]
     for idcluster in range(0, maxclusters):
         result.append([idcluster, arrangedatapercluster(idcluster, lbls, datafit,dataupdate)])
@@ -338,10 +296,10 @@ def arrangeddatas(maxclusters, lbls, datafit, dataupdate):
 
 #def createSubcluster(labels, datafit,clustertype):
 maxclus=max(res.labels_)+1
-hasil = arrangeddatas(maxclus, res.labels_, datas,datas)
+result = arrangeddatas(maxclus, res.labels_, datas,datas)
 u = 0
 subclusters=[]
-for sub in hasil:
+for sub in result:
     #subclusters = []
     sresk=None
     if(len(sub[1])>1):
@@ -368,12 +326,12 @@ for a in res.labels_:
 labelsK = []
 slabelsK = []
 lbl = 0
-#masukin subcluster label ke data utamanya
-def idperfirstcluster(subhasil):
+#input the subcluster label to the main data
+def idperfirstcluster(subresult):
     ids=[0]
     initid=0
-    for idx,h in enumerate(subhasil):
-        if(idx<len(subhasil)-1):
+    for idx,h in enumerate(subresult):
+        if(idx<len(subresult)-1):
             if(h[1]!=None):
                 ids.append(h[1].labels_.max()+initid+1)
                 initid=h[1].labels_.max()+initid+1
@@ -384,10 +342,10 @@ def idperfirstcluster(subhasil):
 idstart=idperfirstcluster(subclusters)
 for d in datas:
     cari=[]
-    for h in range(0, len(hasil)+1):#hasil adalah data arrange cluster 1nya
-        hasilke = np.array(hasil[h][1])[:,1]#ambil aray data idnya
-        cari = np.where(d[1] == hasilke)#cari nilai id pada dnya ada atau enggak di clusternya
-        if (len(cari[0]) > 0):#jika datanya ditemukan maka selesai loopingnya
+    for h in range(0, len(result)+1):#result is data arrange cluster
+        hasilke = np.array(result[h][1])[:,1]#grab id data
+        cari = np.where(d[1] == hasilke)#find the id value on d 
+        if (len(cari[0]) > 0):#if found then break
             break
     try:    
         subke = subclusters[h]
@@ -397,7 +355,7 @@ for d in datas:
             find=cari[0][0]
             ids=subke[1].labels_[find]+idstart[h]
             slabelsK.append([subke[0],ids])
-        #cari label per id pedestriannya
+        #find label per pedestrian id
     except Exception as E:
         s=subke
         print('no 1 ',E)
@@ -411,10 +369,6 @@ for idx,slbl in enumerate(slabelsK):
     labelsK.append([index[0][0],[slbl]])
 
 lbl=0
-# labelsCsK=[]
-# for a in labelsK:
-#      a[0]=a[0]%50
-#      labelsCsK.append(colordict[int(a[0])])
 
 EvKmeans = []
 EvHierar = []
@@ -423,14 +377,11 @@ EvCKmeans = []
 EvCHierar = []
 EvCMS = []
 
-#problem: ga bisa dapet centroid sebagai perwakilan cluster untuk di masukkan ke dalam perhitungan either menggunakan hitungan average, or median, or modus
-#opsi: bisa menggunakan k-means clustering tapi masalahnya kmeans hasilnya bisa beda beda, bisa dapat centroid, menggunakan dbscan jg bisa : masalahnya ga ada centroid juga, konsepnya berbasis density
-
 def idxreturnpedestrian(anno,personID):
-    #mencari posisi yang sesuai dengan annotation
+    #find posisition based on annotation
     return np.where(personID == anno)
 def idxreturncluster(anno,clusterID):
-    #mencari posisi yang sesuai dengan annotation
+    #find cluster posisition based on annotation
     result=np.where(anno == np.array(clusterID))
     return result[0]
 evflag=[]
@@ -454,14 +405,11 @@ def evpercluster(member, isdist,threshold,frame,clusterno):
     if(len(member)>2):
         status=False
         #if(member[0][-2]==22 and (frame==240 or frame==300)):#ngecek no 92 apakah kena threshold
-       #     print('bim')
-        #    evflag.append('bim')
+       #     print('tes)
+        #    evflag.append('tes')
             #beberapa data ga di kick dari cluster
-        if (np.isnan(dist).any() == False):  #jika mencapai maks nilai vector arah diganti 0
-            # if (len(member) < 4):#jika member nya kurang dari 4 maka nilai density adalah len member -1 selebihnya -2
-            #     n = int(len(member)) - 1
-            # else:
-            #     n = int(len(member)) - 2
+        if (np.isnan(dist).any() == False):  
+
             n=int(math.floor(len(member)*(80/100)))
             
             contaminations = 0.2
@@ -469,13 +417,8 @@ def evpercluster(member, isdist,threshold,frame,clusterno):
             
             result = clf.fit_predict(dist)
             resultneg = clf.negative_outlier_factor_
-            # for idx,r in enumerate(resultneg):
-            #     if (r - (sum(resultneg)/len(resultneg)) > threshold):#jika nilai rerata result negative lebih besar dari 3 maka dikatakan terjadi anomali dibawahnya tanpa anomali(1)
-            #         result[idx] = -1
-            #     else:
-            #         result[idx] = 1
                 
-            rest = np.where(result == -1)#mencata semua nilai anomali
+            rest = np.where(result == -1)#find all anomalies
             if (len(rest[0]) > 0):
                 status=True
             if(status!=True):    
@@ -487,13 +430,12 @@ def evpercluster(member, isdist,threshold,frame,clusterno):
                   status=True
         else:
             rest = [[1]]
-    elif (len(member)==2):#jika membernya adalah dua maka langsung saja jika distancenya(euclediance) itu lebih besar dari threshold akan akan dianggap ada anomili
+    elif (len(member)==2):#If the number of members is two, then directly check: if the distance (Euclidean) is greater than the threshold, it will be considered an anomaly.
         dist =member[:, (4)].reshape(-1,1)
         dist2= member[:, (2,3)]
         dista = smallest_angular_distance(dist[0],dist[1])
         dista2=distance.euclidean(dist2[0],dist2[1])
-        #berinilai nan karena data pertama jadi masih kosong.
-        #cluster nan masih masuk ini adalah data baru 
+
         if (dista > threshold):
             rest = [[1]]
             status = True
@@ -505,19 +447,17 @@ def evpercluster(member, isdist,threshold,frame,clusterno):
             status=False
     
     return rest,status 
-    # for m in member:
-    #     distance.euclidean()
+
 def nowhasmember(idcentro,datapeds):
     state=False
-    # if(idcentro==15):
-    #     print('cek')
+
     for ped in datapeds:
         if(idcentro==ped[-1]):
             state=True
             break
     return state
 def findnearestradius(ped, datanormal,threshold,centro):
-    #mencari kandidat tetangga yang masih didalam radius
+    #find neighbourhood that is in radius
     from scipy.spatial import distance_matrix, distance
     neighbors = []
     distances = []
@@ -531,8 +471,6 @@ def findnearestradius(ped, datanormal,threshold,centro):
             centronormal=normalize_dataset(np.array(centronormal))
             
             i = 0
-        #a = res.predict([ped[5], ped[6]])
-        #ubah point B jadi data centro
 
             for datan in centronormal:
                 pointA = [ped[2],ped[3]]
@@ -541,7 +479,7 @@ def findnearestradius(ped, datanormal,threshold,centro):
                 pointBdir = datan[4]
                 distadir=smallest_angular_distance(pointAdir,pointBdir)
                 dista = distance.euclidean(pointA, pointB)
-                #di cek jika direction sama distancenya kurang dari threshold maka akan dievaluasi
+                #find if the distance under threshold
                 
                 if(distadir<threshold[0]):
                     if (dista < threshold[1]):
@@ -572,10 +510,9 @@ def findnearestradius(ped, datanormal,threshold,centro):
                 clusternear = np.array(neighbors)[:, 1]  #mengindikasikan bahwa nomor cluster
         except Exception as e:
             print('no 3 ',e)
-        #mengembalikan data tetangga, akumulative distancenya, id cluster terdekatnya dan id data tetangganya
+        #return neighbour data, accumulative distance, closest cluster id, and neighbour id
     return neighbors,accumulativedistance,clusternear,idx
 additionalchange = []
-#def calculatedistanceincluster(datasupdate,centroidnya,clusterid):
             
 def evaluatecluster(label, datanormal, dataclust, datasupdate, frame, centro,maxcluster):
     theta=[tdirect,tdist]#direction,distance
@@ -589,7 +526,7 @@ def evaluatecluster(label, datanormal, dataclust, datasupdate, frame, centro,max
             if(frame==800):
                 if(percluster[0]==326):
                     a=1
-            disevres,disstat = evpercluster(member, True,theta[0],frame,percluster[0]) #cari data yang dianggap outlier menggunakan LOF mengembalikan anggota yang melenceng
+            disevres,disstat = evpercluster(member, True,theta[0],frame,percluster[0]) 
             
             #direvres, dirstat = ev(member, False,0.5)
             if (disstat == True):#jika ada yang diubah
@@ -599,17 +536,15 @@ def evaluatecluster(label, datanormal, dataclust, datasupdate, frame, centro,max
                     if (len(idex) == 1):
                         try:
                             #change = member[idex]
-                            neighbors, dist, clustnear, indexofresult = findnearestradius(change[0], datanormal, theta,centro)#cari cluster dengan radius terdekat dengan thershold theta untuk radius dan jarak dalam kondisi normal.
-                            #cari radius yang dekat bagi yang clusternya berubah
+                            neighbors, dist, clustnear, indexofresult = findnearestradius(change[0], datanormal, theta,centro)#cari cluster 
                             if(len(dist)>0): #jika ditemukan
                                 val = neighbors[np.argmin(np.array(dist))][-1]
                                 indexneighbors=int(indexofresult[np.argmin(np.array(dist))])
                                 vallabel= centro[indexneighbors]
                                 if(vallabel[1]==60 and frame ==245):
                                     a=0
-                                # datasupdate[int(change[0][-1])][-1] = vallabel[0]
-                                # label[int(change[0][-1])] = vallabel
-                                datasupdate[int(change[0][-1])][-1] = vallabel[1]#int(-1) #maka akan diupdate nilainya
+
+                                datasupdate[int(change[0][-1])][-1] = vallabel[1]#int(-1) 
                                 label[int(change[0][-1])] = [vallabel[1],-1]
                                 pointA = datasupdate[int(change[0][-1])][4]#,datasupdate[int(change[0][-1])][6]]
                                 pointB = vallabel[4]
@@ -621,16 +556,14 @@ def evaluatecluster(label, datanormal, dataclust, datasupdate, frame, centro,max
                                 dista2=smallest_angular_distance(pointA1,poinB1)
                                 dista=smallest_angular_distance(pointA,pointB)
                                 
-                                #calc=calculatedistanceincluster(datasupdate,centro,vallabel[1])
-                                #print('masuk')
+
                                 additionalchange.append(datasupdate[int(change[0][-1])])
                             else:
                                 #indexneighbors=int(indexofresult[np.argmin(np.array(dist))])
                                 vallabel= -1#label[indexneighbors]
                                 datasupdate[int(change[0][-1])][-1] = vallabel
                                 label[int(change[0][-1])] = [vallabel,vallabel]
-                               # print('masuk 2 dihilangkan')
-                                #print(int(change[0][-1]))
+
                                 additionalchange.append(datasupdate[int(change[0][-1])])
                             #label[int(change[0][-1])][0]=11#konek nih sayyyyyy
                         except Exception as e:
@@ -640,8 +573,7 @@ def evaluatecluster(label, datanormal, dataclust, datasupdate, frame, centro,max
                             try:
                                 
                                 neighbors, dist, clustnear,indexofresult = findnearestradius(c, datanormal, theta,centro)
-                                #ini gw cuman cari jarak terdekat terus lgs diassign
-                            # print(int(change[-1]))
+
                                 if(len(dist)>0):
                                     idxdis=np.argmin(np.array(dist))
                                     val = neighbors[np.argmin(np.array(dist))][-1]
@@ -676,48 +608,25 @@ def evaluatecluster(label, datanormal, dataclust, datasupdate, frame, centro,max
                             except Exception as e:
                                 print('no 5 ',e)
                     b = datasupdate[idex]
-                    #make grid per frame
-                    #find minimum
-                    #if larger than threshold assign it!
-        # elif(len(percluster[1])==1): 
-        #     neighbors, dist, clustnear, indexofresult = findnearestradius(percluster[1][0], datanormal, theta,centro)
-        #     if(len(dist)>0):
-        #         c=percluster[1][0]
-        #         idxdis=np.argmin(np.array(dist))
-        #         val = neighbors[np.argmin(np.array(dist))][-1]
-        #         indexneighbors=int(indexofresult[np.argmin(np.array(dist))])
-        #         vallabel= centro[indexneighbors][1]
-        #         #if(vallabel!=percluster[1][0][1]): 
-        #         datasupdate[int(c[-1])][-1] = vallabel
-        #         label[int(c[-1])] = [vallabel,1]
-        #         additionalchange.append(datasupdate[int(c[-1])])
-    nancluster = []
-    for idx,data in enumerate(datasupdate): #looping untuk menemukan data baru
+
+    for idx,data in enumerate(datasupdate): #find new data
         clustername = data[7]
         if (math.isnan(data[7]) or data[7]==-1):#jika merupakan data baru
                 neighbors, dist, clustnear, indexofresult = findnearestradius(data, datanormal, theta,centro)#cari yang paling dekat dengan c entroid       
-                if (len(neighbors) == 0):#jika tidak ditemukan maka ditambahkan ke dalam list tanpa cluster
+                if (len(neighbors) == 0):#if not find put to the storage
                     nancluster.append(data)
-                else:#jika ditemukan maka dicari dicari yang jaraknya(direction plus location) paling dekat
+                else:# if found then find the nearest distance
                     try:
                         idxmin=np.argmin(dist)
-                        if(clustnear[idxmin]==60 and frame ==245):
-                            a=0
-                        #label[idx] = [clustnear[idxmin], -1]#pilih yang paling deket jarak dan directionnya
+    
                         label[idx] = [clustnear[idxmin], -1]
                         datasupdate[idx][-1] = clustnear[idxmin]
                         additionalchange.append(datasupdate[idx])
-                       # print('masuk 5 tambahkan')
                         a = 0
                     except Exception as e:
                         print('no 6 ',e)
 
-                    #jadikan cluster tersebut
-
-                #dijadikan centroid kah?
-                #apakah akan di clusterkan berdasarkan posisi menggunakan kmeans? let sett
-   #pelajari lagi bagian ini 
-    if(len(nancluster)>5):#jika cluster yg tidak ditemukan nearest radiusnya lebih dari 5 atau yang tidak punya cluster(nilai cluster -1) maka
+    if(len(nancluster)>5):#If a cluster that is not found has a nearest radius greater than 5, or if it does not belong to any cluster (cluster value is -1), then
         nanclusters = np.array(nancluster)
         predictedval=nanclusters[:,4].reshape(-1,1)
      #   arr=[[predictedval[0][0],predictedval[0][1]]]
@@ -727,12 +636,10 @@ def evaluatecluster(label, datanormal, dataclust, datasupdate, frame, centro,max
         resultnewclust = agglo2.fit_predict(predictedval)
         if(len(evflag)>0):
             a=0
-        #     clustersK = KMeans(n_clusters=3,init='k-means++',max_iter=250)
-        #     resultnewclust=clustersK.fit_predict(predictedval)
-        #lakukan prediksi menggunakan kmeans untuk direksinya
+ 
         resultnewclustunique = np.unique(resultnewclust)
         nangroup = []
-        for nan in resultnewclustunique:#mengelompokan data baru berdasarkan cluster baru
+        for nan in resultnewclustunique:#Grouping the new data based on the new clusters.
             nansubgroup=[]
             for idxes,nancluster in enumerate(nanclusters):
                 if (resultnewclust[idxes]==nan):
@@ -740,7 +647,7 @@ def evaluatecluster(label, datanormal, dataclust, datasupdate, frame, centro,max
             nangroup.append(nansubgroup)
         #subclusternew=[]
         lastclusternumber = maxcluster
-        for nanfit in nangroup:#melakukan pengclusteran terhadap cluster, -1 untuk tidak ada subcluster, 0 untuk cluster pertama dan 1 untuk cluster ke dua
+        for nanfit in nangroup:#Perform clustering on the clusters: -1 indicates no subcluster, 0 for the first cluster, and 1 for the second cluster.
             if(len(nanfit)>1):
                # print('masuk9')
                 agglo = AgglomerativeClustering(distance_threshold=theta[1],n_clusters=None)
@@ -768,18 +675,8 @@ def evaluatecluster(label, datanormal, dataclust, datasupdate, frame, centro,max
                         sada=0
                     label[index] = [lc, -a]
                     additionalchange.append(datasupdate[index])
-                    # if(lc==max1):
-                    #     clu1.append(datasupdate[index])
-                    # else:
-                    #     clu2.append(datasupdate[index])
-           #     if(len(clu2)==0):
-            #        a=0
-               # val1=calculatedistanceinacluster(clu1)
-               # val2=calculatedistanceinacluster(clu2)
-                #lakukan assigne0ment pada cluster baru yang mengubah nilai label dan nilai datasupdate
+
             else:
-              #  print('masuk6')
-                #lastclusternumber = maxcluster
 
                 rescluster = lastclusternumber + 1
                 if(rescluster==183):
@@ -797,28 +694,21 @@ def evaluatecluster(label, datanormal, dataclust, datasupdate, frame, centro,max
                 if(rescluster==60 and frame ==245):
                     a=0
 
-                #lakukan hal yang sama lgs dilkaukan assignement cluster pada nilai label dan nilai datasupdate
-
-        #lakukan pencarian kembali index pada data sebelumnya untuk mengclusterkan        
-
     return label
 wrong = []
-def calculatedistanceinacluster(clu1):#menghitung jarak dalam satu cluster terhadap nilai reratanya
+def calculatedistanceinacluster(clu1):#Calculate the distance within a cluster to its mean value
     avgdisx=avgdisy=0
     for c1 in clu1:
         avgdisx+=c1[4]
-        #avgdisy+=c1[6]
    
     avgdisx=avgdisx/len(clu1)
-    #avgdisy=avgdisy/len(clu1)
-    #avgdis=np.array([avgdisx,avgdisy])
     distan1=0
     for c1 in clu1:
         distan1+=smallest_angular_distance(avgdisx,c1[4])
     distan1=distan1/len(clu1)
     return distan1
 def assignClusterID(searchpersonIDs, personIDcluster, clusterlabels):
-    #mengurutkan cluster berdasarkan urutan inputnya
+    #arrange the clusster based on input order
     cluster=[]
     for pID in searchpersonIDs:
         try:
@@ -827,23 +717,21 @@ def assignClusterID(searchpersonIDs, personIDcluster, clusterlabels):
         except ValueError:
             cluster.append([-1,-1])
     return cluster
-def changelabelSK(databaru, datalama, labellama,labelbaru):
-    #diketahui clusterID, data lama, data baru
-    #mau mengubah cluster IDnya
+def changelabelSK(newdata, olddata, oldlabel,newlabel):
     try:
         i = 0
         a=0
-        for db in databaru:
+        for db in newdata:
             find = -1
          
             try:
-                find = datalama.index(db)
+                find = olddata.index(db)
                 #if (labellama[find][0] == 25):
                #     a+=1
             except Exception as e:
                 find=-1
             if (find >= 0):
-                labellama[find] = labelbaru[i]
+                oldlabel[find] = newlabel[i]
             i += 1
         a=0
     except Exception as e:
@@ -852,29 +740,15 @@ def updatenewcluster(labelsc, datasupdate, additionalchange):
     for idx,du in enumerate(datasupdate):
         for ac in additionalchange:
             if (du[1] == ac[1]):
-                du[-1] = ac[-1]#mengubah nilai belakang
+                du[-1] = ac[-1]#change the last value
                 labelsc[idx]=[ac[-1],-1]
 # def findrealradius(clusperframe,xcentro,ycentro):
 #     for clus in clusperframe:
 #         eu=euclidean(clusper)    
 def findcentroid(datapercluster,prevdatapercluster,frame,begining,prevcentroids,allprevcentroids):
-#mencari centroid berdasarkan data perclusternya
+#mfind centroid based on cluster
     centroids = []
-    # for clus in datapercluster:
-    #     clus = np.array(clus[1])
-    #     n = len(clus)
-    #     try:
-    #                 if(n>1):
-    #                     x = sum(clus[:, 2])/n
-    #                     y = sum(clus[:, 3])/n
-    #                     V=sum(clus[:,4])/n
-    #                     Vx = sum(clus[:, 5])/n
-    #                     Vy=sum(clus[:,6])/n
-    #                     centroids.append([clus[0][0], clus[0][-2], x, y, V, Vx, Vy,n])  #frame,idcluster,x,y,V,Vx,Vy,jumlah cluster
-    #                 else:
-    #                     centroids.append([clus[0][0], clus[0][-2], clus[0][2], clus[0][3], clus[0][4], clus[0][5], clus[0][6],n])
-    #     except Exception as E:
-    #         a=clus
+
     temp=[] 
     prevdataperclusternotnull=[]
     for prevc in prevdatapercluster:
@@ -900,39 +774,35 @@ def findcentroid(datapercluster,prevdatapercluster,frame,begining,prevcentroids,
                     #r=findrealradius(clus,x,y)
                     if(V<0):
                         a=0
-                    centroids.append([clus[0][0], clus[0][-2], x, y, V, Vx, Vy,d,n])  #frame,idcluster,x,y,V,Vx,Vy,radius,jumlah cluster,tambahkan radius
+                    centroids.append([clus[0][0], clus[0][-2], x, y, V, Vx, Vy,d,n])  #frame,idcluster,x,y,V,Vx,Vy,radius,jumlah cluster,
                 else:
                     centroids.append([clus[0][0], clus[0][-2], clus[0][2], clus[0][3], clus[0][4], clus[0][5], clus[0][6],0,n])
             except Exception as E:
                 a=clus
-        else:#jika bukan awal
+        else:#if it's not the begining
             clus = np.array(clus2[1])
            
             n = len(clus)
-            if(n>0):#jika cluster ada anggotanya
+            if(n>0):#if the cluster has member
                 if(clus[0][-2]==183):
                     sdasd=0
                 listofcentro=[i[0] for i in prevdatapercluster]
-                previdx=np.where(clus[0][-2]==np.array(listofcentro))[0]#dapatkan index cluster di masa lampau
-                #dicek jika data ktmu, kalau ga ktmu kondisi, data pindah ataupun data baru dari data lalu
-                if(len(previdx)>0):#jika cluster sebelumnya ada
-                    prevlist=np.array(prevdatapercluster[previdx[0]][1])#dapatkan data cluster sebelumnya
-                    if(len(prevlist)>0):#jika list anggotanya ketemu
+                previdx=np.where(clus[0][-2]==np.array(listofcentro))[0]
+                if(len(previdx)>0):#if there is a previous cluster
+                    prevlist=np.array(prevdatapercluster[previdx[0]][1])#get the previous cluster
+                    if(len(prevlist)>0):#if the member found
                         num=0
                         deltax=deltay=deltav=deltavx=deltavy=0
                         for member in clus:
-                            idxpeds=np.where(member[1]==prevlist[:,1])[0]#mencari idpedestrian yang bersesuain dengan prevlist
+                            idxpeds=np.where(member[1]==prevlist[:,1])[0]#find pedestrian id that equal with prev list
                             if(len(idxpeds)>0):
                                 num+=1
                                 deltax+=member[2]-prevlist[idxpeds[0]][2]
                                 deltay+=member[3]-prevlist[idxpeds[0]][3]
-                                #deltav+=member[4]-prevlist[idxpeds[0]][4]
-                                #deltavx+=member[5]-prevlist[idxpeds[0]][5]
-                                #deltavy+=member[6]-prevlist[idxpeds[0]][6]
-                                #ubah bagian sini cuy, kalau belok doi gak muter                 
+                
                         if(num>0):#jika isinya ada
                             indexprevclus=np.where(clus[0][-2]==np.array(prevcentroids)[:,1])[0]
-                            if(len(indexprevclus)>0):#jika data centroid ditemukan pada cluster pada frame sebelumnya
+                            if(len(indexprevclus)>0):#If the centroid data is found in the cluster from the previous frame.
                                 x=prevcentroids[indexprevclus[0]][2]+(deltax/num)
                                 y=prevcentroids[indexprevclus[0]][3]+(deltay/num)
                                # if(clus[0][-2]==34 and frame%10==0):
@@ -950,12 +820,12 @@ def findcentroid(datapercluster,prevdatapercluster,frame,begining,prevcentroids,
                                 centroids.append([clus[0][0], clus[0][-2], x, y, V, Vx, Vy,d,n])  #frame,idcluster,x,y,V,Vx,Vy,jumlah cluster
                             else:
                                 a=0
-                        else:#bukan di nolkan tapi nilainya disamak
+                        else:
                             indexprevclus=np.where(clus[0][-2]==np.array(prevcentroids)[:,1])[0]
                             if(len(indexprevclus)>0):
                                 centroids.append([clus[0][0], clus[0][-2], prevcentroids[indexprevclus[0]][2], prevcentroids[indexprevclus[0]][3], prevcentroids[indexprevclus[0]][4], prevcentroids[indexprevclus[0]][5], prevcentroids[indexprevclus[0]][6],prevcentroids[indexprevclus[0]][7],n])
-                    else:#jika list anggota lampaunya ga ktmu
-                        if(n>1):#kalau anggotanya lebih dari 1, reidentification appear then it will jump
+                    else:#if previous member does not exist
+                        if(n>1):#if the member more than 1, reidentification appear then it will jump
                             x = sum(clus[:, 2])/n
                             y = sum(clus[:, 3])/n
                             V=sum(clus[:,4])/n
@@ -967,7 +837,7 @@ def findcentroid(datapercluster,prevdatapercluster,frame,begining,prevcentroids,
                             if(V<0):
                                 a=0
                             centroids.append([clus[0][0], clus[0][-2], x, y, V, Vx, Vy,d,n])  #frame,idcluster,x,y,V,Vx,Vy,jumlah cluster
-                        else:#kalau anggotanya cuma 1
+                        else:#if the member 1
                             #centroids.append([clus[0][0], clus[0][-2], clus[0][2], clus[0][3], clus[0][4], clus[0][5], clus[0][6],n])
                             indexprevclus=np.where(clus[0][-2]==np.array(prevcentroids)[:,1])[0]
                             if(len(indexprevclus)>0):#kalau centroid sebelumnya ada
@@ -987,8 +857,8 @@ def findcentroid(datapercluster,prevdatapercluster,frame,begining,prevcentroids,
                                     centroids.append([clus[0][0], clus[0][-2], clus[0][2], clus[0][3], clus[0][4], clus[0][5], clus[0][6],0,n])
                                     
                                             
-                else:# jika cluster sebelumnya tidak ada
-                    if(n>1):#kalau anggotanya lebih dari satu
+                else:# if no previous cluster
+                    if(n>1):#if the member more than one
                         x = sum(clus[:, 2])/n
                         y = sum(clus[:, 3])/n
                         V=sum(clus[:,4])/n
@@ -998,7 +868,7 @@ def findcentroid(datapercluster,prevdatapercluster,frame,begining,prevcentroids,
                         distances = np.array([distance.euclidean(p, [x,y]) for p in points])
                         d=distances.max()
                         centroids.append([clus[0][0], clus[0][-2], x, y, V, Vx, Vy,d, n])  #frame,idcluster,x,y,V,Vx,Vy,jumlah cluster
-                    else:#kalau anggotanya hanya 1
+                    else:#if the member is only one
                         centroids.append([clus[0][0], clus[0][-2], clus[0][2], clus[0][3], clus[0][4], clus[0][5], clus[0][6],0,n])
                         #centroids.append([clus[0][0], clus[0][-2], clus[0][2], clus[0][3], clus[0][4], clus[0][5], clus[0][6],n])
             else:
@@ -1009,32 +879,13 @@ def findcentroid(datapercluster,prevdatapercluster,frame,begining,prevcentroids,
                     #print(temp)
                     I=0
                 
-            #ini harus dipastikan bahwa data pedestriannya ada juga jgn sampe data pedestriannya hilang atau switching, memastikan pengurangan dilakukan kepada #
-            #peds yang bersesuaian, jika peds tidak ada pada prev=maka tidak diikutkan dalam perhitungan, 
-            #mencoba melakukan pergeseran cluster
-            #deltax=sum(np.subtract(clus[:,2],prevlist[:,2]))
-            #deltay=np.subtract(clus[:,3],prevlist[:,3])
-            #deltaV=
+
 
     return centroids
 def findcentroidtraining(datapercluster,prevdatapercluster,frame,begining,prevcentroids,allprevcentroids):
-#mencari centroid berdasarkan data perclusternya
+#find centroid based on percluster data
     centroids = []
-    # for clus in datapercluster:
-    #     clus = np.array(clus[1])
-    #     n = len(clus)
-    #     try:
-    #                 if(n>1):
-    #                     x = sum(clus[:, 2])/n
-    #                     y = sum(clus[:, 3])/n
-    #                     V=sum(clus[:,4])/n
-    #                     Vx = sum(clus[:, 5])/n
-    #                     Vy=sum(clus[:,6])/n
-    #                     centroids.append([clus[0][0], clus[0][-2], x, y, V, Vx, Vy,n])  #frame,idcluster,x,y,V,Vx,Vy,jumlah cluster
-    #                 else:
-    #                     centroids.append([clus[0][0], clus[0][-2], clus[0][2], clus[0][3], clus[0][4], clus[0][5], clus[0][6],n])
-    #     except Exception as E:
-    #         a=clus
+
     if(frame==81):
         i=0
     temp=[] 
@@ -1071,26 +922,22 @@ def findcentroidtraining(datapercluster,prevdatapercluster,frame,begining,prevce
             n = len(clus)
             if(n>0):#jika cluster ada anggotanya
                 listofcentro=[i[0] for i in prevdatapercluster]
-                previdx=np.where(clus[0][-2]==np.array(listofcentro))[0]#dapatkan index cluster di masa lampau
-                #dicek jika data ktmu, kalau ga ktmu kondisi, data pindah ataupun data baru dari data lalu
-                if(len(previdx)>0):#jika cluster sebelumnya ada
-                    prevlist=np.array(prevdatapercluster[previdx[0]][1])#dapatkan data cluster sebelumnya
-                    if(len(prevlist)>0):#jika list anggotanya ketemu
+                previdx=np.where(clus[0][-2]==np.array(listofcentro))[0]#find cluster index in previous frame
+                if(len(previdx)>0):#if the cluster exist
+                    prevlist=np.array(prevdatapercluster[previdx[0]][1])#find previous cluster
+                    if(len(prevlist)>0):#if the member exist
                         num=0
                         deltax=deltay=deltav=deltavx=deltavy=0
                         for member in clus:
-                            idxpeds=np.where(member[1]==prevlist[:,1])[0]#mencari idpedestrian yang bersesuain dengan prevlist
+                            idxpeds=np.where(member[1]==prevlist[:,1])[0]#find pedestrian id that equal with previous list
                             if(len(idxpeds)>0):
                                 num+=1
                                 deltax+=member[2]-prevlist[idxpeds[0]][2]
                                 deltay+=member[3]-prevlist[idxpeds[0]][3]
-                                #deltav+=member[4]-prevlist[idxpeds[0]][4]
-                                #deltavx+=member[5]-prevlist[idxpeds[0]][5]
-                                #deltavy+=member[6]-prevlist[idxpeds[0]][6]
-                                #ubah bagian sini cuy, kalau belok doi gak muter                 
-                        if(num>0):#jika isinya ada
+                    
+                        if(num>0):
                             indexprevclus=np.where(clus[0][-2]==np.array(prevcentroids)[:,1])[0]
-                            if(len(indexprevclus)>0):#jika data centroid ditemukan pada cluster pada frame sebelumnya
+                            if(len(indexprevclus)>0):#if the centroiud is found from previous frame
                                 x=prevcentroids[indexprevclus[0]][2]+(deltax/num)
                                 y=prevcentroids[indexprevclus[0]][3]+(deltay/num)
                               #  if(clus[0][-2]==34 and frame%10==0):
@@ -1108,12 +955,12 @@ def findcentroidtraining(datapercluster,prevdatapercluster,frame,begining,prevce
                                 centroids.append([clus[0][0], clus[0][-2], x, y, V, Vx, Vy,d,n])  #frame,idcluster,x,y,V,Vx,Vy,jumlah cluster
                             else:
                                 a=0
-                        else:#bukan di nolkan tapi nilainya disamakan
+                        else:
                             indexprevclus=np.where(clus[0][-2]==np.array(prevcentroids)[:,1])[0]
                             if(len(indexprevclus)>0):
                                  centroids.append([clus[0][0], clus[0][-2], clus[0][2], clus[0][3], clus[0][4], clus[0][5], clus[0][6],0,n])
                                 #centroids.append([clus[0][0], clus[0][-2], prevcentroids[indexprevclus[0]][2], prevcentroids[indexprevclus[0]][3], prevcentroids[indexprevclus[0]][4], prevcentroids[indexprevclus[0]][5], prevcentroids[indexprevclus[0]][6],prevcentroids[indexprevclus[0]][7],n])
-                    else:#jika list anggota lampaunya ga ktmu
+                    else:#if the list of previous data is found
                         if(n>1):#kalau anggotanya lebih dari 1, reidentification appear then it will jump
                             x = sum(clus[:, 2])/n
                             y = sum(clus[:, 3])/n
@@ -1126,27 +973,18 @@ def findcentroidtraining(datapercluster,prevdatapercluster,frame,begining,prevce
                             if(V<0):
                                 a=0
                             centroids.append([clus[0][0], clus[0][-2], x, y, V, Vx, Vy,d,n])  #frame,idcluster,x,y,V,Vx,Vy,jumlah cluster
-                        else:#kalau anggotanya cuma 1
+                        else:#if the member is only one
                             #centroids.append([clus[0][0], clus[0][-2], clus[0][2], clus[0][3], clus[0][4], clus[0][5], clus[0][6],n])
                             indexprevclus=np.where(clus[0][-2]==np.array(prevcentroids)[:,1])[0]
                             if(len(indexprevclus)>0):#kalau centroid sebelumnya ada
                                 centroids.append([clus[0][0], clus[0][-2], prevcentroids[indexprevclus[0]][2], prevcentroids[indexprevclus[0]][3], prevcentroids[indexprevclus[0]][4], prevcentroids[indexprevclus[0]][5], prevcentroids[indexprevclus[0]][6],prevcentroids[indexprevclus[0]][7],n])
-                            else:#kalau centroid ga ada diframe sebelumnya, semua masalah ada disni cuy, ganti pakai all previous centroid
+                            else:#if the centroid doesn not exist in previus frame
                                 tempo=0
-                                #centroids.append([clus[0][0], clus[0][-2], clus[0][2], clus[0][3], clus[0][4], clus[0][5], clus[0][6],n])
-                                # for preframe in reversed(allprevcentroids):
-                                #     for precent in preframe:
-                                #         if(precent[1]==clus[0][-2]):
-                                #             tempo=1
-                                #             centroids.append([clus[0][0], precent[1], precent[2], precent[3],precent[4],precent[5],precent[6],precent[7],n])#this possible jump, cluster gone then pop up again.
-                                #             break
-                                #     if(tempo==1):
-                                #         break
-                                # if(tempo==0):
+                  
                                 centroids.append([clus[0][0], clus[0][-2], clus[0][2], clus[0][3], clus[0][4], clus[0][5], clus[0][6],0,n])
                                             
-                else:# jika cluster sebelumnya tidak ada
-                    if(n>1):#kalau anggotanya lebih dari satu
+                else:# if no cluster member
+                    if(n>1):#if the member more than one
                         x = sum(clus[:, 2])/n
                         y = sum(clus[:, 3])/n
                         V=sum(clus[:,4])/n
@@ -1156,7 +994,7 @@ def findcentroidtraining(datapercluster,prevdatapercluster,frame,begining,prevce
                         distances = np.array([distance.euclidean(p, [x,y]) for p in points])
                         d=distances.max()
                         centroids.append([clus[0][0], clus[0][-2], x, y, V, Vx, Vy,d, n])  #frame,idcluster,x,y,V,Vx,Vy,jumlah cluster
-                    else:#kalau anggotanya hanya 1
+                    else:#if the member only one
                         centroids.append([clus[0][0], clus[0][-2], clus[0][2], clus[0][3], clus[0][4], clus[0][5], clus[0][6],0,n])
                         #centroids.append([clus[0][0], clus[0][-2], clus[0][2], clus[0][3], clus[0][4], clus[0][5], clus[0][6],n])
             else:
@@ -1167,21 +1005,9 @@ def findcentroidtraining(datapercluster,prevdatapercluster,frame,begining,prevce
                     #print(temp)
                     I=0
                 
-            #ini harus dipastikan bahwa data pedestriannya ada juga jgn sampe data pedestriannya hilang atau switching, memastikan pengurangan dilakukan kepada #
-            #peds yang bersesuaian, jika peds tidak ada pada prev=maka tidak diikutkan dalam perhitungan, 
-            #mencoba melakukan pergeseran cluster
-            #deltax=sum(np.subtract(clus[:,2],prevlist[:,2]))
-            #deltay=np.subtract(clus[:,3],prevlist[:,3])
-            #deltaV=
 
     return centroids
-# def movecluster(centroids,datapercluster,prevdatapercluster):
-#     #mencari nilai delta jarak x dan y dibanding dengan nilai x dan y pada cluster sebelumnya    
-#     for clus in datapercluster:
-#         clust=np.array(clus[1])
-#         n=len(clust)
-#         if(n>1):
-            #for 
+
 def getdataupdatesbyframe(datasupdate,frame):
     res=[]
     for data in datasupdate:
@@ -1206,23 +1032,7 @@ def calculateDistanceInside(centroid, clustermembers,labels,datasupdates):
                     dist = dist/len(points)#count if more than 1 pedestrian, but the problem is when the cluster is only consist of 1 member
                 else:
                     print(cid)
-                # if(dist>60 and cm[0][0]%5==0):
-                #     print(cid)
-                #     print('frame',cm[0][0])
-                #     print('problem')
-                #     print(d)
-                #     alldata=[]
-                #     alldirection=[]
-                #     a=labels
-                #     for i in range(30):
-                #         idxx=centroid[0][0]-i
-                #         find=getdataupdatesbyframe(datasupdates,idxx)
-                #         alldata.append(find)
-                #         for f in find:
-                #             if(f[1]==769):
-                #                 alldirection.append([f[0],f[4],f[-1]])
-                #                 break
-                #     a=0
+
                 res.append([cid, dist,len(points)])
                 indexcentro+=1
     except Exception as e:
@@ -1252,17 +1062,17 @@ def evaluationpercluster(centroid, distance_evaluation):
     ClusterUnique = np.unique(np.array(datafull))
     evalresult = []
     
-    for CU in ClusterUnique:#setiap data uniq data cluster
+    for CU in ClusterUnique:
         evalpercluster=[]
-        for frame, arrayevaluation in distance_evaluation: # setiap data evaluasi jarakevaluasi distance
+        for frame, arrayevaluation in distance_evaluation: 
             #if(frame%5==0 or frame==75): 
             for ae in arrayevaluation:  
-                if(CU==ae[0]): #jika nilai clusternya sama
+                if(CU==ae[0]): #if the cluster value is the same
                     evalpercluster.append([frame, ae])
                     break
         evalresult.append([CU,evalpercluster])
-    return evalresult  #mpe sini sudah di convert semua
-def smoothnessevaluationpercluster(centroid,threshold):#digunakan untuk mengevaluasi perubahan jarak pada pedestrian, dan mengubah format distance menjadi per cluster
+    return evalresult  
+def smoothnessevaluationpercluster(centroid,threshold):#Used to evaluate changes in distance for pedestrians and convert the distance format to per-cluster.
     evsmooth=[]
     #errtotal=[]
     for idx,arrcentroframe in enumerate(centroid):
@@ -1273,7 +1083,7 @@ def smoothnessevaluationpercluster(centroid,threshold):#digunakan untuk mengeval
                 val3=[]
                 val3.append(val)
                 val2=[ac[1],val3]
-                evsmooth.append(val2)#nama cluster, distance deviation, degree direction, direction deviation,x,y,d,vx,vy
+                evsmooth.append(val2)#cluster id, distance deviation, degree direction, direction deviation,x,y,d,vx,vy
             else:
                # if(idx==1):
                #     evsmooth=np.array(evsmooth)
@@ -1301,7 +1111,7 @@ def smoothnessevaluationpercluster(centroid,threshold):#digunakan untuk mengeval
             frame=ac[0]
 
         #evsmooths.append([frame,evsmooth.copy()])
-    return evsmooth#tinggal buat
+    return evsmooth
 def smoothnessevaluationperpedestrian(df,begin,end):
     evsmoothped=[]
     for number in range(begin, end):    
@@ -1361,11 +1171,11 @@ def getpedistriandatafromcluster(clusterinput):
     for cluin in clusterinput:
         percluster=[]
         perpeds=[]
-        for idx,mf in enumerate(membercentro):#perframe dulu baru percluster baru peds
+        for idx,mf in enumerate(membercentro):
             if(idx==85):
                 a=0
             for clust in mf:
-                if(cluin==clust[0]):#keknya masalah disini deh
+                if(cluin==clust[0]):
                     for peds in clust[1]:
                         perpeds.append(peds)
         clustersearch.append(perpeds)
@@ -1442,30 +1252,20 @@ def runtheframe(begining,ending):
                 maxcluster=findmaxcluster(centroids)
             else:
                 maxcluster=findmaxclusterbegin(datasupdate)
-                
-            #masukan parameter centroid untk ini
-            labeleval = evaluatecluster(labelsc,datanormal,dataclust,datasupdate, frame, centro,maxcluster)#evaluasi cluster, disini centronya ga ada nomor 11
+
+            labeleval = evaluatecluster(labelsc,datanormal,dataclust,datasupdate, frame, centro,maxcluster)#evaluasi cluster, disini centronya ga 
             changelabelSK(personID, pedid, labelsK, labelsc)  #mengubah labelSK
-            #evaluasi jarak didalam cluster terhadap centroidnya (representasinya) gunakan dataclust untuk evaluasi
+
         lsc=[]
         for la in labelsc:
             lsc.append(la[0])
-        # if(frame==81):
-        #     a=0    
-        #     for datasiu in datasupdate:
-        #         if(datasiu[-1]==3):
-        #             print(datasiu[-1])
-        #maxcl = int(np.nanmax(datasupdate[:, -1]) + 1)
+
         maxcl=int(np.nanmax(lsc))+1
         allclust=np.unique(lsc)#disini sebelas ada
         #try:
         dataclustforcentroid = arrangeddatas(maxcl, lsc, datasnonnormal, datasupdate)#kemungkinan di penggunanan maxcluster instead of the real cluster
         centro = findcentroid(dataclustforcentroid,dataclusterprevious,frame,begining,prevcentroids,centroids)
-        
-        # except Exception as e:
-        #     print(e)
-       #if frame!=begining:
-       #     centro=movecluster(centroids,dataclustforcentroid,dataclusterprevious)
+
         dataclusterprevious=dataclustforcentroid.copy()
         prevcentroids=centro.copy()
         datasupdates.append(datasupdate.copy())
@@ -1479,7 +1279,7 @@ def runtheframe(begining,ending):
         
         centroids.append(centro)
         membercentroid.append(dataclustforcentroid)
-    #ubaah semua centroid menjadi nilai terakhir tapi proses evaluasi frame harus berakhir dulu
+
     return centroids,disteval,membercentroid,maxcl
 def arrangeperframe(centroids):
     centroperframe=[]
@@ -1508,7 +1308,7 @@ def maskcentroids(centroids):
                         avgvx+=(frame[4]-prevframe[4])/losslen
                         avgvy+=(frame[5]-prevframe[5])/losslen
                         framevalue=[prevframe[0]+i+1,prevframe[1]+avgx,prevframe[2]+avgy,prevframe[3]+avgd,prevframe[4]+avgvx,prevframe[5]+avgvx,prevframe[6]+avgvy,0]
-                        #cek jumlah pedestriannya disini, habis itu coba aktifkan findcentroid lagi!!
+
                         centro[1].insert(idx+i,framevalue)
             prevframe=frame
         prevcentroid=frame
@@ -1554,7 +1354,7 @@ print('total cluster created is',maxclus)
 print('total cluster more than 1 is',countmorethan1)
 print('percentage of cluster=',(countmorethan1/maxclus)*100)
 #how many member of pedestrian in each frame based on centroids:
-#isi dari centroid adalah: frame,idcluster,x,y,V,Vx,Vy,jumlah cluster
+#centroid contains: frame,idcluster,x,y,V,Vx,Vy,jumlah cluster
 pedestriannumbereveryframesfromcluster = sumclustermembereveryframes(centroids)
 pedestriannumbereveryframesfromdataset = countpedestrianperframes(df,start,finish)
 evsmooth=smoothnessevaluationpercluster(centroids,0.5)
@@ -1613,32 +1413,14 @@ def angular_similarity(trajectory1, trajectory2):
     angles = [angle_between_vectors(v1, v2) for v1, v2 in zip(vectors1, vectors2)]
     return np.sum(angles)
 
-#print('arrange started!')
-#arrange=arrangeperperson(dataGT)
 
-#arrangeHT=arrangeperperson(datanframe)
-#print('arrange done, compare started!')
-#comparisonnya disini di close dulu
-#compgt=compareTrajectorysimilaritywithGT(arrange,evsmooth)
-#compgt=compareTrajectorysimilaritywithGT(arrange,arrange)
-#compgt=compareTrajectorysimilaritywithGT(arrange,arrangeHT)
-
-
-#next visualisasikan lintasan yang mirip tersebut di grafik
-#coba evaluasi trajectory similaritynya
-
-###evaluasinya tiap clusters, di cek nilai perpindahan teringgi ditiap cluster####
-##definisi smoothness itu adalah tidak adanya lompatan pada cluster track###
-##lompatan yang dimaksud adalah adanya perubahan data secara significant pada jalur track tiap frame###
-#print(compgt[1])
 a = 0
-#tinggal buat plotnya yak biar kelihatan nilanya
+
 centroidsawal=np.array(centroids[0])
 xpoints = centroidsawal[:,2]
 ypoints = centroidsawal[:,3]
 ##################make plotss############################
-#lakukan evaluasi dengan mengubah semua cluster denan cluster terakhir yang dimiliki oleh suatu pedestrian harusnya jalannya akan lebih stabil sebagai input
-#lalu bagaimana dengan saat inference bisa saja langsung diinputkan, mungkin perlu ditambah denan sedikit evaluasi untuk
+
 ############################animasi plot##################################
 figA, axA = plt.subplots()
 annotation=[]
@@ -1647,15 +1429,11 @@ for i in range(len(xpoints)):
    # annotation.append([labelsK[i][0],pedid[i],axA.annotate(ann, xy=(xpoints[i],ypoints[i]), xytext=(xpoints[i],ypoints[i]))])
     annotation.append([str(centroidsawal[i][1]),ann,axA.annotate(ann, xy=(xpoints[i],ypoints[i]), xytext=(xpoints[i],ypoints[i]))])
 scat = axA.scatter(xpoints, ypoints, s=10)
-###############################plot pertama plot sublot x=cluster y=nilai per plotnya adalah frame#############################
+###############################first plot, plot sublot x=cluster y=value per plot#############################
 figDistev, axDistev = plt.subplots()
-#tampilan harusnya per cluster untuk tiap cluster
 for fr in distev:
     y = np.array(fr[1])[:, 1]
-    #for idx,clus in fr[1]:
-        #for cl in clus[1]:
-        #x = np.array(cl)[:,0]
-        #y = np.array(clus)[:, 1]
+
     x=np.array(fr[1])[:, 0]
     
     axDistev.plot(x, y)
@@ -1665,7 +1443,7 @@ lgnd = [row[0] for row in distev]
 axDistev.legend(lgnd)
 axDistev.set_xlabel('Clusters')
 axDistev.set_ylabel('Average Distance Value')
-######################Plot ke dua grafik per Cluster######################################
+######################Second plot graph per Cluster######################################
 figDistevf, axDistevf = plt.subplots()
 #tampilan harusnya per cluster untuk tiap cluster
 for clu in distevformatted:
@@ -1679,9 +1457,9 @@ axDistevf.legend(lgnd,bbox_to_anchor=(-0.05, 1.02, 1,0.1), loc=3,
                ncol= 10, mode="expand", borderaxespad=0)
 axDistevf.set_xlabel('Frame')
 axDistevf.set_ylabel('Average Distance Value')
-#########################################plot ketiga perbandingan nilai jumlah pedestrian#################################################
+#########################################third plot, comparison of pedestrian count values#################################################
 figpednumber, axpednumber = plt.subplots()
-#tampilan harusnya per cluster untuk tiap cluster
+
 x=np.array(pedestriannumbereveryframesfromdataset)[:,0]
 y=np.array(pedestriannumbereveryframesfromdataset)[:,1]
 axpednumber.plot(x, y)
@@ -1693,7 +1471,7 @@ axpednumber.legend(lgnd,bbox_to_anchor=(-0.05, 1.02, 1,0.1), loc=3,
                ncol= 10, mode="expand", borderaxespad=0)
 axpednumber.set_xlabel('Frame')
 axpednumber.set_ylabel('number of pedestrians')
-#######################################plot keempat selisih nilai jumlah pedestrian=================================================
+#######################################Fourth plot: the difference in pedestrian count values.=================================================
 figdevpednumber, axdevpednumber = plt.subplots()
 x=np.array(pedestriannumbereveryframesfromdataset)[:,0]
 y = np.array(pedestriannumbereveryframesfromdataset)[:, 1] - np.array(pedestriannumbereveryframesfromcluster)[:, 1]
@@ -1704,10 +1482,9 @@ axdevpednumber.legend(lgnd,bbox_to_anchor=(-0.05, 1.02, 1,0.1), loc=3,
 axdevpednumber.set_xlabel('Frame')
 axdevpednumber.set_ylabel('deviation number of pedestrians')
 
-######################Plot ke lima grafik deviasi per Cluster######################################
+######################Fifth plot: deviation graph per cluster.######################################
 figsmoothevf, axsmoothevf = plt.subplots()
-#tampilan harusnya per cluster untuk tiap cluster
-#nama cluster, distance deviation, direction deviation, x,y,vx,vy
+
 for clu in evsmooth:
     da=clu[1]
     y = [row[1] for row in clu[1]] #x , dan y nya harusnya isinya per cluster
@@ -1720,25 +1497,22 @@ lgnd = [row[0] for row in evsmooth]
 #                ncol= 10, mode="expand", borderaxespad=0)
 axsmoothevf.set_xlabel('Frame')
 axsmoothevf.set_ylabel('Distance Deviation')
-################################################plot ke enam deviasi per pedestrian######################################
-#buat sama seperti ploit ke 5 tapi pakai data pedestrian
+################################################Sixth plot: deviation per pedestrian######################################
+
 figsmoothpedevf, axsmoothpedevf = plt.subplots()
-#tampilan harusnya per cluster untuk tiap cluster
-#nama cluster, distance deviation, direction deviation, x,y,vx,vy
+
 for clu in evsmoothped:
     da=clu[1]
-    y = [row[1] for row in clu[1]] #x , dan y nya harusnya isinya per cluster
+    y = [row[1] for row in clu[1]] 
     x = [row[0] for row in clu[1]]
     axsmoothpedevf.plot(x, y)
-    #perbaiki xynya
+
 lgnd = [row[0] for row in evsmoothped]
-#print(lgnd)
-#axsmoothpedevf.legend(lgnd,bbox_to_anchor=(-0.05, 1.02, 1,0.1), loc=3,
- #              ncol= 10, mode="expand", borderaxespad=0)
+
 axsmoothpedevf.set_xlabel('Frame')
 axsmoothpedevf.set_ylabel('Pedestrian Distance Deviation')
 
-#######################################################plot ke tujuh perbandingan cluster#####################################
+#######################################################Seventh plot: cluster comparison#####################################
 figdetails, axdetails = plt.subplots()
 clusterinput=idclustermaxdis
 centroidtrack=[]
@@ -1783,14 +1557,14 @@ for centros in allcentroidtracks:
 #i=0
 
 
-###############################simulasi buat perjalanan semua cluster#################################################
+###############################cluster simulation#################################################
 figallcentro, axallcentro = plt.subplots()
 arrangedcentroid=arrangepercentroid(centroids)
 i=0
 for centros in arrangedcentroid:
     #centros=np.array(centros)
     #clu=centros[1]
-    y = [row[2] for row in centros[1]] #x , dan y nya harusnya isinya per cluster
+    y = [row[2] for row in centros[1]]
     x = [row[1] for row in centros[1]]
 
     axallcentro.plot(x,y,color='red')
@@ -1825,7 +1599,7 @@ print(f"Data has been written to {filename}")
 
 #####animation#####################
 def update(frame):
-    #masalah label kosong aja
+
     frame=frame+start
     #print(frame)
     # for each frame, update the data stored on each artist.
@@ -1845,7 +1619,7 @@ def update(frame):
   #  print('annot')
   #  print(np.array(annotation)[:,0])
     try:
-        for idx, d in enumerate(datasupdate):#ini untuk mencari yang label pada data updatesnya masih nan akan ditampilkan sebagai -1
+        for idx, d in enumerate(datasupdate):
             convert = np.array(annotation)[:, 0]
             #convertfloat=convert[1].split(",")[0]
             foundya = np.where(convert == str(d[1]))
@@ -1870,8 +1644,7 @@ def update(frame):
     except Exception as e:
        # print('no 9 ',e)
         a=9
-    # for a in labelsc:
-    #     labelsMark.append(markerdict[int(a)])
+
     
     dataAn = np.stack([xpointsA, ypointsA]).T
     scat.set_offsets(dataAn)
@@ -1885,7 +1658,7 @@ def update(frame):
 ani = animation.FuncAnimation(fig=figA, func=update, frames=finish-start, interval=100)
 
 plt.show()      
-#buat clusteringnya cuys
+
 #print(res.labels_)
 
 # Background color
