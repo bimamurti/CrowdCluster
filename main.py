@@ -23,7 +23,6 @@ from collections import defaultdict
 
 
 #preprocessing
-#buat evaluasi menggunakan matrix clustering!!!!!!!!!!!!
 #directoryGT='Pedestrian Cluster/crossing_90c03.txt'
 #directoryGT='Pedestrian Cluster/dataset continual/MOT21GT02.txt'
 directoryGT='gt03.txt'
