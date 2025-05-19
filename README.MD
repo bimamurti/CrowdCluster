@@ -2,7 +2,7 @@
 --- 
 
 ## Installation
-to install we suggest to create new conda environment 
+to install we suggest to create new conda environment\
 ``` conda create -n clusterenvironment python==3.9.18```
 ```    conda activate clusterenvironment ```
 
@@ -54,7 +54,7 @@ here the example of running script setting for trajectron++ to run the script:
 
 ## References
 <a id="1">[1]</a> 
-Salzmann, T., Ivanovic, B., Chakravarty, P., & Pavone, M. (2020). Trajectron++: Dynamically-feasible trajectory forecasting with heterogeneous data. In Computer Vision–ECCV 2020: 16th European Conference, Glasgow, UK, August 23–28, 2020, Proceedings, Part XVIII 16 (pp. 683-700). Springer International Publishing.
+Salzmann, T., Ivanovic, B., Chakravarty, P., & Pavone, M. (2020). Trajectron++: Dynamically-feasible trajectory forecasting with heterogeneous data. In Computer Vision–ECCV 2020: 16th European Conference, Glasgow, UK, August 23–28, 2020, Proceedings, Part XVIII 16 (pp. 683-700). Springer International Publishing.\
 <a id="2">[2]</a> 
 P. Xu, J.-B. Hayet, and I. Karamouzas. Socialvae: Human trajectory prediction using timewise
 latents. pages 511–528, 2022. doi: 10.1007/978-3-031-19772-7_30. URL https://link.
