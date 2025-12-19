@@ -5,7 +5,7 @@ Efficient Dense Crowd Trajectory Prediction Via Dynamic Clustering
 --- 
 
 <p align="center">
-  <img src="images/proposed method (1).png" width="400">
+  <img src="proposed method (1).png" width="400">
 </p>
 
 ## Installation
