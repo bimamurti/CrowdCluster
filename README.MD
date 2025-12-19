@@ -1,6 +1,10 @@
+This code is for our paper entitled with:
+Efficient Dense Crowd Trajectory Prediction Via Dynamic Clustering
+
 # Dense Crowd Trajectory Prediction
 --- 
 
+![Alt text](images/proposed method (1).png)
 ## Installation
 to install we suggest to create new conda environment\
 ``` conda create -n clusterenvironment python==3.9.18```
