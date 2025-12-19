@@ -1,7 +1,6 @@
 This code is for our paper entitled with:
-Efficient Dense Crowd Trajectory Prediction Via Dynamic Clustering
 
-# Dense Crowd Trajectory Prediction
+# Efficient Dense Crowd Trajectory Prediction Via Dynamic Clustering
 --- 
 
 <p align="center">
